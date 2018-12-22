@@ -1,0 +1,6 @@
+repo: a61af66fc99eb5ec9d50c05b0c599757b1289ceb
+node: 9b0ca45cd756d538c4c30afab280a91868eee1a5
+branch: default
+latesttag: hs21-b17
+latesttag: jdk7-b147
+latesttagdistance: 2

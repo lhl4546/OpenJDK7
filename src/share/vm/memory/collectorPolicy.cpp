@@ -55,11 +55,15 @@
 // CollectorPolicy methods.
 
 void CollectorPolicy::initialize_flags() {
+  // PermSize大于MaxPermSize并没有关系，将PermSize覆盖MaxPermSize
   if (PermSize > MaxPermSize) {
     MaxPermSize = PermSize;
   }
+  // PermSize先对64k对齐，再取64k与对齐结果中的较大值
+  // PermSize = MAX2(64k, align_size_down_(PermSize, 64k))
   PermSize = MAX2(min_alignment(), align_size_down_(PermSize, min_alignment()));
   // Don't increase Perm size limit above specified.
+  // MaxPermSize = align_size_down(MaxPermSize, 2m)
   MaxPermSize = align_size_down(MaxPermSize, max_alignment());
   if (PermSize > MaxPermSize) {
     PermSize = MaxPermSize;
@@ -80,6 +84,9 @@ void CollectorPolicy::initialize_flags() {
   assert(SharedReadWriteSize % max_alignment() == 0, "read-write space alignment");
   assert(SharedMiscDataSize % max_alignment() == 0, "misc-data space alignment");
   if (PermSize < M) {
+    // 要想不抛异常，只有PermSize大于等于1m，而PermSize要大于等于1m，则MaxPermSize
+    // 必须不能小于2m，因为按照align_size_down的做法，小于max_alignmeng()的permSize
+    // 都会被截断为0，所以MaxPermSize至少要为2m
     vm_exit_during_initialization("Too small initial permanent heap");
   }
 }
@@ -88,8 +95,10 @@ void CollectorPolicy::initialize_size_info() {
   // User inputs from -mx and ms are aligned
   set_initial_heap_byte_size(InitialHeapSize);
   if (initial_heap_byte_size() == 0) {
+    // 如果InitialHeapSize未指定，则InitialHeapSize等于NewSize+OldSize
     set_initial_heap_byte_size(NewSize + OldSize);
   }
+  // 将_initial_heap_byte_size对64k向上对齐
   set_initial_heap_byte_size(align_size_up(_initial_heap_byte_size,
                                            min_alignment()));
 
@@ -100,6 +109,7 @@ void CollectorPolicy::initialize_size_info() {
   set_min_heap_byte_size(align_size_up(_min_heap_byte_size,
                                        min_alignment()));
 
+  // 取MaxHeapSize对2m向上取整后的结果作为_max_heap_byte_size
   set_max_heap_byte_size(align_size_up(MaxHeapSize, max_alignment()));
 
   // Check heap parameter properties
@@ -225,12 +235,15 @@ size_t GenCollectorPolicy::compute_max_alignment() {
 
 void GenCollectorPolicy::initialize_flags() {
   // All sizes must be multiples of the generation granularity.
+  // 16k
   set_min_alignment((uintx) Generation::GenGrain);
+  // 2m
   set_max_alignment(compute_max_alignment());
   assert(max_alignment() >= min_alignment() &&
          max_alignment() % min_alignment() == 0,
          "invalid alignment constraints");
 
+  // 调用基类的初始化方法：初始化PermSize以及MaxPermSize等持久代相关size
   CollectorPolicy::initialize_flags();
 
   // All generational heaps have a youngest gen; handle those flags here.
@@ -239,7 +252,9 @@ void GenCollectorPolicy::initialize_flags() {
   if (NewSize > MaxNewSize) {
     MaxNewSize = NewSize;
   }
+  // 取NewSize对64k向下对齐的结果
   NewSize = align_size_down(NewSize, min_alignment());
+  // 取MaxNewSize对64k向下对齐的结果
   MaxNewSize = align_size_down(MaxNewSize, min_alignment());
 
   // Check validity of heap flags
@@ -256,12 +271,17 @@ void GenCollectorPolicy::initialize_flags() {
 }
 
 void TwoGenerationCollectorPolicy::initialize_flags() {
+  // 调用基类初始化方法，初始化NewSize以及MaxNewSize
   GenCollectorPolicy::initialize_flags();
 
+  // OldSize = align_size_down(OldSize, 64k)
+  // 取OldSize对64k向下对齐的结果
   OldSize = align_size_down(OldSize, min_alignment());
+  // 如果计算出来的NewSize+OldSize超过了MaxHeapSize则顺势扩充MaxHeapSize
   if (NewSize + OldSize > MaxHeapSize) {
     MaxHeapSize = NewSize + OldSize;
   }
+  // 取MaxHeapSize对2m向上对齐的结果
   MaxHeapSize = align_size_up(MaxHeapSize, max_alignment());
 
   always_do_update_barrier = UseConcMarkSweepGC;

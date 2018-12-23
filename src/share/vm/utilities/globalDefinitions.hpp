@@ -347,12 +347,14 @@ extern int LogMinObjAlignmentInBytes;
 
 #define align_size_up_(size, alignment) (((size) + ((alignment) - 1)) & ~((alignment) - 1))
 
+// 向上对齐，返回(size/alignmeng+1)*alignment
 inline intptr_t align_size_up(intptr_t size, intptr_t alignment) {
   return align_size_up_(size, alignment);
 }
 
 #define align_size_down_(size, alignment) ((size) & ~((alignment) - 1))
 
+// 向下对齐，返回(size/alignment)*alignment
 inline intptr_t align_size_down(intptr_t size, intptr_t alignment) {
   return align_size_down_(size, alignment);
 }

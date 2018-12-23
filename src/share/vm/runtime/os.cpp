@@ -1214,8 +1214,10 @@ size_t os::page_size_for_region(size_t region_min_size, size_t region_max_size,
 
     for (unsigned int i = 0; _page_sizes[i] != 0; ++i) {
       const size_t sz = _page_sizes[i];
+      // a & (b - 1) == a % b if b is power of 2
       const size_t mask = sz - 1;
       if ((region_min_size & mask) == 0 && (region_max_size & mask) == 0) {
+        // region_min_size和region_max_size都是sz的整数倍
         // The largest page size with no fragmentation.
         return sz;
       }
